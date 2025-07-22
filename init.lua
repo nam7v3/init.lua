@@ -15,6 +15,8 @@ vim.opt.hlsearch = true
 vim.opt.incsearch = true
 vim.opt.wildignore:append("*.o,*.obj,*.dll,*.exe,*.pdb")
 vim.opt.wildignore:append("*/.git/*,*/build/*")
+vim.opt.path:append("**")
+vim.opt.wildmenu = true
 
 -- Indentation
 vim.opt.tabstop = 2
@@ -28,7 +30,7 @@ vim.opt.formatoptions = "tq2c"
 
 -- Completion
 vim.opt.completeopt = "menuone,preview,popup"
-vim.opt.pumheight = 5
+vim.opt.pumheight = 8
 
 -- Visual setting
 vim.opt.number = true
@@ -55,12 +57,14 @@ vim.opt.backup = false
 vim.opt.swapfile = false
 vim.opt.undofile = true
 vim.opt.hidden = true
-vim.opt.path:append("**")
 vim.opt.mouse = 'a'
+vim.opt.clipboard:append("unnamedplus")
 vim.o.background = "dark"
 
 -- Netrw
 vim.g.netrw_banner = 0
+vim.g.netrw_altv = 1
+vim.g.netrw_liststyle = 3
 
 vim.opt.shellpipe = ">"
 
@@ -74,19 +78,21 @@ vim.api.nvim_create_autocmd({"BufWritePre"}, {
     command = [[%s/\s\+$//e]],
 })
 
-api.nvim_create_autocmd({ "BufEnter", "BufRead" }, {
-  pattern = { "*.c", "*.h", "*.cc", "*.cpp", "*.hpp" },
+api.nvim_create_autocmd({ "FileType" },  {
+  desc = 'Setting some common c stuff',
+  pattern = {'c', 'cpp'},
   callback = function(ev)
     vim.cmd[[let c_no_curly_error=1]]
     vim.cmd[[set cindent]]
     vim.opt.makeprg = table.concat(detect_build_cmd(), " ")
-    vim.opt.path = {".", "**"}
+    vim.opt.path = "**"
   end,
 })
 
-api.nvim_create_autocmd("DirChanged", {
+api.nvim_create_autocmd("FileType", {
+  pattern = "qf",
   callback = function()
-    vim.opt.path = { ".", "**" }
+    vim.cmd("resize 10")
   end,
 })
 -- Utils function
@@ -100,7 +106,7 @@ function toggle_quickfix()
   if quickfix_open then
     vim.cmd('cclose')
   else
-    vim.cmd[[copen | horizontal resize 15]]
+    vim.cmd('10copen')
   end
 end
 
@@ -254,11 +260,16 @@ function async_make(args)
   local function on_exit(result)
     local end_time = vim.uv.hrtime()
     local duration = (end_time - start_time) / 1e9
-    local err_start, err_end = string.find(result.stderr, '%d+ errors?')
-    local err_count = err_start and string.sub(result.stderr, err_start, err_end) or ""
+    local err_count = 0
 
-    if string.len(err_count) > 0 then
-      print(string.format("Build: failed with %s", err_count))
+    for line in result.stdout:gmatch("[^\r\n]+") do
+      if line:lower():find("error") then
+        err_count = err_count + 1
+      end
+    end
+
+    if err_count > 0 then
+      print(string.format("Build: failed with %d errors", err_count))
     else
       print(string.format("Build: succeed in %.2f s.", duration))
     end
@@ -271,9 +282,9 @@ function async_make(args)
         lines = output,
         efm = errorformat,
       })
-      if #result.stderr > 0 then
+      if err_count > 0 then
         vim.cmd("doautocmd QuickFixCmdPost")
-        vim.cmd[[copen | horizontal resize 15]]
+        vim.cmd('copen')
       end
     end)
   end
@@ -301,16 +312,17 @@ keymap.set("n", "J", "mzJ`z")
 keymap.set("n", "U", "<C-r>", {desc = "Redo"})
 
 -- Searching
-
+keymap.set("n", "n", "nzz", {desc = "Center next search"})
+keymap.set("n", "N", "Nzz", {desc = "Center prev search"})
 -- Diagnostic
 -- keymap.set("n", "<leader>e", function() vim.diagnostic.open_float() end, opts)
 -- keymap.set("n", "<leader>q", vim.diagnostic.setloclist, opts)
 
 -- Fast clipboard
-keymap.set({"n", "v"}, "<leader>y", '"+y')
-keymap.set({"n", "v"}, "<leader>Y", '"+Y')
-keymap.set({"n", "v"}, "<leader>p", '"+p')
-keymap.set({"n", "v"}, "<leader>P", '"+P')
+-- keymap.set({"n", "v"}, "<leader>y", '"+y')
+-- keymap.set({"n", "v"}, "<leader>Y", '"+Y')
+-- keymap.set({"n", "v"}, "<leader>p", '"+p')
+-- keymap.set({"n", "v"}, "<leader>P", '"+P')
 
 keymap.set({'n', 'v'}, '<leader>f', ':find ', {desc = 'Find file'})
 keymap.set({'n', 'v'}, '<leader>/', ':grep ', {desc = 'Find file'})
@@ -322,7 +334,7 @@ keymap.set({'n', 'v'}, '<leader>/', ':grep ', {desc = 'Find file'})
 -- keymap.set({'n', 'v'}, '<leader>gs', '<cmd>Telescope git_status<cr>', {desc = 'Git status'})
 
 if vim.g.neovide then
-  vim.o.guifont= "Hack:h12"
+  vim.o.guifont= "Hack:h10"
   vim.g.neovide_opacity = 1.0
   vim.g.neovide_cursor_animation_length = 0.0
   keymap.set({'n', 'i'}, '<F11>', function ()
