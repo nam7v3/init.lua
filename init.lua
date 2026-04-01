@@ -9,13 +9,9 @@ vim.g.mapleader = " "
 
 -- Searching
 vim.opt.selection = "exclusive"
-vim.opt.ignorecase = true
 vim.opt.smartcase = true
 vim.opt.hlsearch = true
 vim.opt.incsearch = true
-vim.opt.wildignore:append("*.o,*.obj,*.dll,*.exe,*.pdb")
-vim.opt.wildignore:append("*/.git/*,*/build/*")
-vim.opt.path:append("**")
 vim.opt.wildmenu = true
 
 -- Indentation
@@ -26,10 +22,9 @@ vim.opt.softtabstop = 2
 vim.opt.expandtab = true
 vim.opt.autoindent = true
 vim.opt.smartindent = true
-vim.opt.formatoptions = "tq2c"
 
 -- Completion
-vim.opt.completeopt = "menuone,preview,popup"
+vim.opt.completeopt = "menuone,popup"
 vim.opt.pumheight = 8
 
 -- Visual setting
@@ -37,19 +32,14 @@ vim.opt.number = true
 vim.opt.showmode = true
 vim.opt.cursorline = true
 vim.opt.cursorlineopt = "both"
--- vim.opt.showmatch = true
--- vim.opt.matchtime = 3
-vim.opt.termguicolors = true
-vim.opt.updatetime = 250
-vim.opt.redrawtime = 1500
 vim.opt.inccommand = "split"
 vim.opt.timeoutlen = 3000
 vim.opt.jumpoptions = "stack,view"
-vim.opt.ruler = true
-vim.o.background = "dark"
+vim.opt.ruler = false
+vim.opt.background = "dark"
 
 -- Behaviours
-vim.opt.wrap = false
+vim.opt.wrap = true
 vim.opt.virtualedit = "all,onemore"
 vim.opt.scrolloff = 10
 vim.opt.sidescrolloff = 10
@@ -59,7 +49,6 @@ vim.opt.undofile = true
 vim.opt.hidden = true
 vim.opt.mouse = 'a'
 vim.opt.clipboard:append("unnamedplus")
-vim.o.background = "dark"
 
 -- Netrw
 vim.g.netrw_banner = 0
@@ -68,47 +57,48 @@ vim.g.netrw_liststyle = 3
 
 vim.opt.shellpipe = ">"
 
-vim.api.nvim_create_autocmd("TextYankPost", {
+if vim.g.neovide then
+  vim.o.guifont= "Hack Nerd Font Mono:h11"
+  vim.g.neovide_opacity = 1.0
+  keymap.set({'n','v' ,'o', 'i'}, '<F11>', function ()
+    vim.g.neovide_fullscreen = not vim.g.neovide_fullscreen
+  end, {})
+end
+
+vim.cmd [[ highlight TODO ctermfg=LightRed cterm=bold guifg=LightRed gui=bold ]]
+vim.cmd [[ syntax match TODO /TODO/ containedin=ALL ]]
+
+vim.cmd [[ highlight NOTE ctermfg=Cyan cterm=bold guifg=Cyan gui=bold ]]
+vim.cmd [[ syntax match NOTE /NOTE/ containedin=ALL ]]
+
+vim.cmd [[ highlight BUG ctermfg=Red cterm=bold guifg=Red gui=bold ]]
+vim.cmd [[ syntax match BUG /BUG/ containedin=ALL ]]
+
+vim.cmd [[ highlight link @comment.note NOTE ]]
+vim.cmd [[ highlight link @comment.todo TODO ]]
+vim.cmd [[ highlight link @comment.error BUG ]]
+
+api.nvim_create_autocmd({ "TextYankPost" }, {
 	callback = function() vim.highlight.on_yank() end,
 	desc = "Briefly highlight yanked text",
 })
 
-vim.api.nvim_create_autocmd({"BufWritePre"}, {
+api.nvim_create_autocmd({ "BufWritePre" }, {
     pattern = "*",
     command = [[%s/\s\+$//e]],
 })
 
 api.nvim_create_autocmd({ "FileType" },  {
-  desc = 'Setting some common c stuff',
-  pattern = {'c', 'cpp'},
-  callback = function(ev)
+  desc = "Setting some common c stuff",
+  pattern = {"c", "cpp", "h", "hpp"},
+  callback = function(args)
     vim.cmd[[let c_no_curly_error=1]]
     vim.cmd[[set cindent]]
-    vim.opt.makeprg = table.concat(detect_build_cmd(), " ")
-    vim.opt.path = "**"
-  end,
-})
-
-api.nvim_create_autocmd("FileType", {
-  pattern = "qf",
-  callback = function()
-    vim.cmd("resize 10")
+    vim.treesitter.start(args.buf, "c")
+    vim.bo.omnifunc = 'v:lua.vim.treesitter.query.omnifunc'
   end,
 })
 -- Utils function
-function toggle_quickfix()
-  local quickfix_open = false;
-  for _, win in pairs(vim.fn.getwininfo()) do
-    if win["quickfix"] == 1 then
-      quickfix_open = true
-    end
-  end
-  if quickfix_open then
-    vim.cmd('cclose')
-  else
-    vim.cmd('10copen')
-  end
-end
 
 local opts = {silent = true}
 
@@ -122,38 +112,6 @@ keymap.set("n", "]b", ":bnext<CR>", {desc = "Next buffer"})
 keymap.set("n", "[b", ":bprevious<CR>", {desc = "Prev buffer"})
 keymap.set("n", "[B", ":bfirst<CR>", {desc = "First buffer"})
 keymap.set("n", "]B", ":blast<CR>", {desc = "Last buffer"})
-
-function pick_buffer()
-  local buffers = {}
-  local cwd = fn.getcwd(0, 0)
-  cwd = cwd:gsub("/$", "")
-
-  for _, id in ipairs(api.nvim_list_bufs()) do
-    local name = api.nvim_buf_get_name(id)
-    local relative_path = name:gsub("^" .. cwd .. "/", "")
-    local cursor = api.nvim_buf_get_mark(id, '"')
-    local buftype = api.nvim_get_option_value("buftype", {buf = id})
-    local filetype = api.nvim_get_option_value("filetype", {buf = id})
-
-    if name ~= "" and buftype == "" and filetype ~= "netrw" then
-      table.insert(buffers, {
-        bufnr = id,
-        filename = relative_path,
-        lnum = cursor[1],
-        col = cursor[2],
-        text = string.format("#%d", id)
-      })
-    end
-  end
-  table.sort(buffers, function(a, b)
-    return a.filename > b.filename
-  end)
-  fn.setqflist({}, " ", { title = "Buffers" })
-  fn.setqflist(buffers, "a")
-  toggle_quickfix()
-end
-
-keymap.set("n", "<leader>b", pick_buffer, {desc = "Interactively pick buffer"});
 
 -- Tab navigation
 keymap.set("n", "]t", ":tabnext<CR>", {desc = "Next tab"})
@@ -210,99 +168,8 @@ keymap.set("v", "g'", "<Esc>`<i'<Esc>`>a'<Esc>`<v`>f'")
 keymap.set({'n', 'o', 'v'}, 'L', '$')
 keymap.set({'n', 'o', 'v'}, 'H', '^')
 
--- Building
-
-function detect_build_cmd()
-  local make_files = {
-    ["build.sh"] = {"./build.sh"},
-    ["build.ps1"] = {"powershell", "-NoProfile", "-NoExit", ".\\build.ps1"},
-    ["build.bat"] = {"build.bat"},
-    ["Makefile"] = {"make"},
-    ["CMakeList.txt"] = {"cmake"},
-    ["meson.build"] = {"meson"},
-    ["premake5.lua"] = {"premake5"},
-  }
-  local cwd = fn.getcwd(0, 0)
-  for file, cmd in pairs(make_files) do
-    local filepath = cwd .. "/" .. file
-    if fn.filereadable(filepath) == 1 then
-      return cmd
-    end
-  end
-  return nil
-end
-
-function async_make(args)
-  local winnr = vim.fn.win_getid()
-  local bufnr = api.nvim_win_get_buf(winnr)
-
-  local makeprg = api.nvim_get_option_value("makeprg", {scope = "global"})
-  local errorformat = api.nvim_get_option_value("errorformat", {scope = "global"})
-
-  local make_cmd = detect_build_cmd()
-  if not make_cmd then
-    error("Build: failed to detect build command");
-    return
-  end
-
-  local make_str = table.concat(make_cmd, " ")
-
-  if args ~= nil then
-    for _, arg in ipairs(args) do
-      table.insert(make_cmd, arg)
-    end
-  end
-
-  vim.cmd("wall")
-  vim.print("Build: " .. make_str)
-
-  local start_time = vim.uv.hrtime()
-  local function on_exit(result)
-    local end_time = vim.uv.hrtime()
-    local duration = (end_time - start_time) / 1e9
-    local err_count = 0
-
-    for line in result.stdout:gmatch("[^\r\n]+") do
-      if line:lower():find("error") then
-        err_count = err_count + 1
-      end
-    end
-
-    if err_count > 0 then
-      print(string.format("Build: failed with %d errors", err_count))
-    else
-      print(string.format("Build: succeed in %.2f s.", duration))
-    end
-
-    local output = vim.split(result.stdout .. result.stderr, "\n", { plain = false })
-    vim.schedule(function ()
-      vim.g.make_is_building = false
-      vim.fn.setqflist({}, " ", {
-        title = make_str .. err_count,
-        lines = output,
-        efm = errorformat,
-      })
-      if err_count > 0 then
-        vim.cmd("doautocmd QuickFixCmdPost")
-        vim.cmd('copen')
-      end
-    end)
-  end
-  vim.g.make_is_building = true
-  if vim.g.make_is_building then
-    vim.system(make_cmd, { text = true }, on_exit)
-  end
-end
-
-api.nvim_create_user_command("Build", function(opts)
-  async_make(opts.fargs)
-end, {
-  nargs = "*",
-  complete = "file", -- optional completion
-})
-
 keymap.set('n', '<C-p>', function () toggle_quickfix() end, { desc = 'Toggle Quickfix' })
-keymap.set('n', '<C-b>', function () async_make() end, { desc = 'Building the project' })
+keymap.set('n', '<C-b>', function () async_build(detect_build_cmd()) end, { desc = 'Building the project' })
 
 keymap.set({"n", "o", "v"}, "L", "$")
 keymap.set({"n", "o", "v"}, "H", "^")
@@ -314,58 +181,143 @@ keymap.set("n", "U", "<C-r>", {desc = "Redo"})
 -- Searching
 keymap.set("n", "n", "nzz", {desc = "Center next search"})
 keymap.set("n", "N", "Nzz", {desc = "Center prev search"})
--- Diagnostic
--- keymap.set("n", "<leader>e", function() vim.diagnostic.open_float() end, opts)
--- keymap.set("n", "<leader>q", vim.diagnostic.setloclist, opts)
 
 -- Fast clipboard
--- keymap.set({"n", "v"}, "<leader>y", '"+y')
--- keymap.set({"n", "v"}, "<leader>Y", '"+Y')
--- keymap.set({"n", "v"}, "<leader>p", '"+p')
--- keymap.set({"n", "v"}, "<leader>P", '"+P')
+keymap.set({"n", "v"}, "<leader>y", '"+y')
+keymap.set({"n", "v"}, "<leader>Y", '"+Y')
+keymap.set({"n", "v"}, "<leader>p", '"+p')
+keymap.set({"n", "v"}, "<leader>P", '"+P')
 
-keymap.set({'n', 'v'}, '<leader>f', ':find ', {desc = 'Find file'})
-keymap.set({'n', 'v'}, '<leader>/', ':grep ', {desc = 'Find file'})
--- keymap.set({'n', 'v'}, '<leader>f', '<cmd>Telescope find_files<cr>', {desc = 'Find file'})
--- keymap.set({'n', 'v'}, '<leader>/', '<cmd>Telescope live_grep<cr>', {desc = 'Grep'})
--- keymap.set({'n', 'v'}, '<leader>b', '<cmd>Telescope buffers<cr>', {desc = 'Find buffer'})
--- keymap.set({'n', 'v'}, '<leader>gc', '<cmd>Telescope git_commits<cr>', {desc = 'Git commits'})
--- keymap.set({'n', 'v'}, '<leader>gb', '<cmd>Telescope git_branches<cr>', {desc = 'Git branches'})
--- keymap.set({'n', 'v'}, '<leader>gs', '<cmd>Telescope git_status<cr>', {desc = 'Git status'})
+keymap.set({'n', 'v'}, '<leader>f', '<cmd>Telescope find_files<cr>', {desc = 'Find file'})
+keymap.set({'n', 'v'}, '<leader>/', '<cmd>Telescope live_grep<cr>', {desc = 'Grep'})
+keymap.set({'n', 'v'}, '<leader>b', '<cmd>Telescope buffers<cr>', {desc = 'Find buffer'})
 
-if vim.g.neovide then
-  vim.o.guifont= "Hack:h10"
-  vim.g.neovide_opacity = 1.0
-  vim.g.neovide_cursor_animation_length = 0.0
-  keymap.set({'n', 'i'}, '<F11>', function ()
-    vim.g.neovide_fullscreen = not vim.g.neovide_fullscreen
-  end, {})
+
+-- Building
+function toggle_quickfix()
+  local quickfix_open = false;
+  for _, win in pairs(vim.fn.getwininfo()) do
+    if win["quickfix"] == 1 then
+      quickfix_open = true
+    end
+  end
+  if quickfix_open then
+    vim.cmd('cclose')
+  else
+    vim.cmd('copen')
+  end
 end
 
--- Folding
--- api.nvim_create_augroup("Fold", { clear = true })
---
--- api.nvim_create_autocmd("BufWinLeave", {
---   group = "Fold",
---   pattern = "*.c",
---   command = "mkview"
--- })
---
--- api.nvim_create_autocmd("BufWinEnter", {
---   group = "Fold",
---   pattern = "*.c",
---   command = "silent! loadview"
--- })
+local buildcmd_files = {
+  ["build.sh"] = {"bash", "-c", "./build.sh"},
+  ["build.ps1"] = {"powershell", "-NoProfile", "-NoExit", ".\\build.ps1"},
+  ["build.bat"] = {"cmd.exe", "/c", "build.bat"},
+  ["build.zig"] = {"zig.exe", "build"},
+  ["Makefile"] = {"make"},
+  ["CMakeList.txt"] = {"cmake"},
+  ["meson.build"] = {"meson"},
+  ["premake5.lua"] = {"premake5"},
+}
 
+function detect_build_cmd()
+  local cwd = fn.getcwd(0, 0)
+  for file, cmd in pairs(buildcmd_files) do
+    local filepath = cwd .. "/" .. file
+    if fn.filereadable(filepath) == 1 then
+      return cmd
+    end
+  end
+  return ""
+end
 
-vim.cmd [[ highlight cTodo ctermfg=Red cterm=bold,underline guifg=#fb4934 gui=bold,underline ]]
-vim.cmd [[ highlight myNote ctermfg=Blue cterm=bold,underline guifg=#458588 gui=bold,underline ]]
-vim.cmd [[
-  filetype plugin indent on
-  syntax enable
-]]
+function async_build(buildcmd)
+  local errorformat = api.nvim_get_option_value("errorformat", {scope = "global"})
 
-vim.api.nvim_create_autocmd("Syntax", {
-  pattern = "*",
-  command = "syntax match myNote /NOTE/ containedin=ALL",
+  if not buildcmd then
+    print("Build: failed to detect build command");
+    return
+  end
+
+  local buildstr = table.concat(buildcmd, " ")
+
+  if args ~= nil then
+    for _, arg in ipairs(args) do
+      table.insert(buildcmd, arg)
+    end
+  end
+
+  vim.cmd("wall")
+  vim.print("Build: " .. buildstr)
+
+  local start_time = vim.uv.hrtime()
+  local function on_exit(result)
+    local end_time = vim.uv.hrtime()
+    local duration = (end_time - start_time) / 1e9
+    local err_count = 0
+
+    for line in result.stdout:gmatch("[^\r\n]+") do
+      if line:lower():find("%d+.*%d+.*error:?") then
+        err_count = err_count + 1
+      end
+    end
+
+    for line in result.stderr:gmatch("[^\r\n]+") do
+      if line:lower():find("%d+.*%d+.*error:?") then
+        err_count = err_count + 1
+      end
+    end
+
+    if err_count > 0 then
+      print(string.format("Build: %s: failed with #%d errors", buildstr, err_count))
+    else
+      print(string.format("Build: %s: succeed in %.2f s.", buildstr, duration))
+    end
+
+    local output = vim.split(result.stdout .. result.stderr, "\n", { plain = false })
+    vim.schedule(function ()
+      vim.g.make_is_building = false
+      vim.fn.setqflist({}, " ", {
+        title = buildstr .. err_count,
+        lines = output,
+        efm = errorformat,
+      })
+      vim.fn.setqflist({}, 'a', {
+        title = string.format("Build: %s #%d errors", buildstr, err_count)
+      })
+      if err_count > 0 then
+        vim.cmd("doautocmd QuickFixCmdPost")
+        vim.cmd('copen')
+      else
+        vim.cmd('cclose')
+      end
+    end)
+  end
+  vim.g.make_is_building = true
+  if vim.g.make_is_building then
+    vim.system(buildcmd, { text = true }, on_exit)
+  end
+end
+
+api.nvim_create_user_command("Build", function(opts)
+  local buildcmd = opts.fargs
+  if #opts.fargs < 1 then
+    buildcmd = detect_build_cmd()
+  end
+  async_build(buildcmd)
+end, {
+  nargs = "*",
+  complete = "file",
+})
+
+require('telescope').setup({
+  defaults = {
+    file_ignore_patterns = {
+      "%.git", "%.zig%-cache",
+      "%.exe", "%.dll", "%.so", "%.obj", "%.a", "%.pdb", "%.ilk",
+      "%.png", "%.jpg", "%.jpeg", "%.gif", "%.bmp", "%.ico",
+      "%.pdf", "%.zip", "%.tar", "%.gz", "%.rar",
+      "%.mp3", "%.mp4", "%.mkv", "%.avi", "%.wav",
+      "%.lock",
+    },
+  },
 })
