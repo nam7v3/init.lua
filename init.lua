@@ -9,6 +9,7 @@ vim.g.mapleader = " "
 
 -- Searching
 vim.opt.selection = "exclusive"
+vim.opt.ignorecase = true
 vim.opt.smartcase = true
 vim.opt.hlsearch = true
 vim.opt.incsearch = true
@@ -94,7 +95,7 @@ api.nvim_create_autocmd({ "FileType" },  {
   callback = function(args)
     vim.cmd[[let c_no_curly_error=1]]
     vim.cmd[[set cindent]]
-    vim.treesitter.start(args.buf, "c")
+    vim.treesitter.start(args.buf, "cpp")
     vim.bo.omnifunc = 'v:lua.vim.treesitter.query.omnifunc'
   end,
 })
