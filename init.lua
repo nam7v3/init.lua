@@ -59,8 +59,15 @@ vim.g.netrw_liststyle = 3
 vim.opt.shellpipe = ">"
 
 if vim.g.neovide then
-  vim.o.guifont= "Hack Nerd Font Mono:h11"
+  vim.o.guifont= "Hack Nerd Font Mono:h10"
   vim.g.neovide_opacity = 1.0
+  vim.g.neovide_position_animation_length = 0
+  vim.g.neovide_cursor_animation_length = 0.00
+  vim.g.neovide_cursor_trail_size = 0
+  vim.g.neovide_cursor_animate_in_insert_mode = false
+  vim.g.neovide_cursor_animate_command_line = false
+  -- vim.g.neovide_scroll_animation_far_lines = 0
+  -- vim.g.neovide_scroll_animation_length = 0.00
   keymap.set({'n','v' ,'o', 'i'}, '<F11>', function ()
     vim.g.neovide_fullscreen = not vim.g.neovide_fullscreen
   end, {})
