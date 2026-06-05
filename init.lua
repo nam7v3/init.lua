@@ -2,89 +2,63 @@ local keymap = vim.keymap
 local api = vim.api
 local opt = vim.opt
 local fn = vim.fn
+local g = vim.g
 
+-- GUI
 vim.cmd.colorscheme("retrobox")
 
-vim.g.mapleader = " "
+opt.guifont= "Hack Nerd Font Mono:h12"
+opt.background = "dark"
+opt.number = true
+opt.showmode = true
+opt.title = false
+opt.cursorline = true
 
--- Searching
-vim.opt.selection = "exclusive"
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
-vim.opt.hlsearch = true
-vim.opt.incsearch = true
-vim.opt.wildmenu = true
+g.neovide_cursor_animation_length = 0.0
 
--- Indentation
-vim.opt.tabstop = 2
-vim.opt.shiftwidth = 2
-vim.opt.breakindent = true
-vim.opt.softtabstop = 2
-vim.opt.expandtab = true
-vim.opt.autoindent = true
-vim.opt.smartindent = true
+-- Editor
+opt.scrolloff = 10
+opt.splitbelow = true
+opt.splitright = true
+opt.wrap = true
+opt.virtualedit = "onemore"
+opt.backup = false
+opt.swapfile = false
+opt.undofile = true
+opt.hidden = true
+opt.mouse = 'a'
+opt.clipboard:append("unnamedplus")
+opt.autoread = true
+opt.inccommand = "split"
+opt.timeoutlen = 3000
+opt.ruler = false
 
 -- Completion
-vim.opt.completeopt = "menuone,popup"
-vim.opt.pumheight = 8
+opt.completeopt = "menuone,popup"
+opt.pumheight = 8
 
--- Visual setting
-vim.opt.number = true
-vim.opt.showmode = true
-vim.opt.cursorline = true
-vim.opt.cursorlineopt = "both"
-vim.opt.inccommand = "split"
-vim.opt.timeoutlen = 3000
-vim.opt.jumpoptions = "stack,view"
-vim.opt.ruler = false
-vim.opt.background = "dark"
+-- Indentation
+opt.tabstop = 2
+opt.shiftwidth = 2
+opt.breakindent = true
+opt.softtabstop = 2
+opt.expandtab = true
+opt.smartindent = true
 
--- Behaviours
-vim.opt.wrap = true
-vim.opt.virtualedit = "all,onemore"
-vim.opt.scrolloff = 10
-vim.opt.sidescrolloff = 10
-vim.opt.backup = false
-vim.opt.swapfile = false
-vim.opt.undofile = true
-vim.opt.hidden = true
-vim.opt.mouse = 'a'
-vim.opt.clipboard:append("unnamedplus")
+-- Searching
+opt.selection = "exclusive"
+opt.smartcase = true
+opt.hlsearch = true
+opt.incsearch = true
+opt.wildmenu = true
 
 -- Netrw
-vim.g.netrw_banner = 0
-vim.g.netrw_altv = 1
-vim.g.netrw_liststyle = 3
+g.netrw_banner = 0
+g.netrw_altv = 1
 
-vim.opt.shellpipe = ">"
-
-if vim.g.neovide then
-  vim.o.guifont= "Hack Nerd Font Mono:h10"
-  vim.g.neovide_opacity = 1.0
-  vim.g.neovide_position_animation_length = 0
-  vim.g.neovide_cursor_animation_length = 0.00
-  vim.g.neovide_cursor_trail_size = 0
-  vim.g.neovide_cursor_animate_in_insert_mode = false
-  vim.g.neovide_cursor_animate_command_line = false
-  -- vim.g.neovide_scroll_animation_far_lines = 0
-  -- vim.g.neovide_scroll_animation_length = 0.00
-  keymap.set({'n','v' ,'o', 'i'}, '<F11>', function ()
-    vim.g.neovide_fullscreen = not vim.g.neovide_fullscreen
-  end, {})
-end
-
-vim.cmd [[ highlight TODO ctermfg=LightRed cterm=bold guifg=LightRed gui=bold ]]
-vim.cmd [[ syntax match TODO /TODO/ containedin=ALL ]]
-
-vim.cmd [[ highlight NOTE ctermfg=Cyan cterm=bold guifg=Cyan gui=bold ]]
-vim.cmd [[ syntax match NOTE /NOTE/ containedin=ALL ]]
-
-vim.cmd [[ highlight BUG ctermfg=Red cterm=bold guifg=Red gui=bold ]]
-vim.cmd [[ syntax match BUG /BUG/ containedin=ALL ]]
-
-vim.cmd [[ highlight link @comment.note NOTE ]]
-vim.cmd [[ highlight link @comment.todo TODO ]]
-vim.cmd [[ highlight link @comment.error BUG ]]
+vim.cmd [[ highlight link @comment.note Todo ]]
+vim.cmd [[ highlight link @comment.todo Todo ]]
+vim.cmd [[ highlight link @comment.error Todo ]]
 
 api.nvim_create_autocmd({ "TextYankPost" }, {
 	callback = function() vim.highlight.on_yank() end,
@@ -92,23 +66,22 @@ api.nvim_create_autocmd({ "TextYankPost" }, {
 })
 
 api.nvim_create_autocmd({ "BufWritePre" }, {
-    pattern = "*",
-    command = [[%s/\s\+$//e]],
+  pattern = "*",
+  command = [[%s/\s\+$//e]],
 })
 
 api.nvim_create_autocmd({ "FileType" },  {
   desc = "Setting some common c stuff",
   pattern = {"c", "cpp", "h", "hpp"},
   callback = function(args)
-    vim.cmd[[let c_no_curly_error=1]]
-    vim.cmd[[set cindent]]
-    vim.treesitter.start(args.buf, "cpp")
+    vim.treesitter.start(args.buf, "c")
     vim.bo.omnifunc = 'v:lua.vim.treesitter.query.omnifunc'
   end,
 })
+
 -- Utils function
 
-local opts = {silent = true}
+g.mapleader = " "
 
 keymap.set("i", "<C-c>", "<C-[>")
 keymap.set("n", "<C-c>", "<C-[><cmd>nohlsearch<CR>")
@@ -200,6 +173,11 @@ keymap.set({'n', 'v'}, '<leader>f', '<cmd>Telescope find_files<cr>', {desc = 'Fi
 keymap.set({'n', 'v'}, '<leader>/', '<cmd>Telescope live_grep<cr>', {desc = 'Grep'})
 keymap.set({'n', 'v'}, '<leader>b', '<cmd>Telescope buffers<cr>', {desc = 'Find buffer'})
 
+if vim.g.neovide then
+  keymap.set({'n','v' ,'o', 'i'}, '<F11>', function ()
+    vim.g.neovide_fullscreen = not vim.g.neovide_fullscreen
+  end, {})
+end
 
 -- Building
 function toggle_quickfix()
@@ -239,10 +217,8 @@ function detect_build_cmd()
 end
 
 function async_build(buildcmd)
-  local errorformat = api.nvim_get_option_value("errorformat", {scope = "global"})
-
   if not buildcmd then
-    print("Build: failed to detect build command");
+    print("no build command");
     return
   end
 
@@ -254,56 +230,36 @@ function async_build(buildcmd)
     end
   end
 
-  vim.cmd("wall")
-  vim.print("Build: " .. buildstr)
+  vim.print(buildstr)
+  vim.cmd("silent! wall")
 
   local start_time = vim.uv.hrtime()
   local function on_exit(result)
     local end_time = vim.uv.hrtime()
     local duration = (end_time - start_time) / 1e9
-    local err_count = 0
 
-    for line in result.stdout:gmatch("[^\r\n]+") do
-      if line:lower():find("%d+.*%d+.*error:?") then
-        err_count = err_count + 1
-      end
-    end
-
-    for line in result.stderr:gmatch("[^\r\n]+") do
-      if line:lower():find("%d+.*%d+.*error:?") then
-        err_count = err_count + 1
-      end
-    end
-
-    if err_count > 0 then
-      print(string.format("Build: %s: failed with #%d errors", buildstr, err_count))
-    else
-      print(string.format("Build: %s: succeed in %.2f s.", buildstr, duration))
-    end
-
-    local output = vim.split(result.stdout .. result.stderr, "\n", { plain = false })
     vim.schedule(function ()
-      vim.g.make_is_building = false
-      vim.fn.setqflist({}, " ", {
-        title = buildstr .. err_count,
-        lines = output,
-        efm = errorformat,
+      g.async_make_running = false
+      fn.setqflist({}, 'a', {
+        title = string.format("%s: completed in %ds", buildstr, duration)
       })
-      vim.fn.setqflist({}, 'a', {
-        title = string.format("Build: %s #%d errors", buildstr, err_count)
-      })
-      if err_count > 0 then
-        vim.cmd("doautocmd QuickFixCmdPost")
-        vim.cmd('copen')
-      else
-        vim.cmd('cclose')
+    end)
+  end
+
+  local function on_stdout(err, data)
+    vim.schedule(function ()
+      if data then
+        local lines = vim.split(data, "\r\n", { trimempty = true })
+        fn.setqflist({}, "a", { lines = lines })
       end
     end)
   end
-  vim.g.make_is_building = true
-  if vim.g.make_is_building then
-    vim.system(buildcmd, { text = true }, on_exit)
+  vim.g.async_make_running = true
+  if vim.g.async_make_running then
+    vim.system(buildcmd, { text = true, stdout = on_stdout}, on_exit)
   end
+  fn.setqflist({}, "f", { title = string.format("%s: building", buildstr) })
+  vim.cmd("copen")
 end
 
 api.nvim_create_user_command("Build", function(opts)
