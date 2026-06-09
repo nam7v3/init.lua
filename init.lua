@@ -34,6 +34,8 @@ opt.timeoutlen = 3000
 opt.ruler = false
 opt.wildmenu = true
 opt.wildoptions:remove("pum")
+opt.visualbell = false
+opt.errorbells = false
 
 -- Completion
 opt.completeopt = "menuone,popup"
@@ -152,7 +154,7 @@ keymap.set({'n', 'o', 'v'}, 'L', '$')
 keymap.set({'n', 'o', 'v'}, 'H', '^')
 
 keymap.set('n', '<C-p>', function () toggle_quickfix() end, { desc = 'Toggle Quickfix' })
-keymap.set('n', '<C-b>', function () async_build(detect_build_cmd()) end, { desc = 'Building the project' })
+keymap.set('n', '<C-b>', function () async_run(detect_build_cmd()) end, { desc = 'Building the project' })
 
 keymap.set({"n", "o", "v"}, "L", "$")
 keymap.set({"n", "o", "v"}, "H", "^")
@@ -171,9 +173,7 @@ keymap.set({"n", "v"}, "<leader>Y", '"+Y')
 keymap.set({"n", "v"}, "<leader>p", '"+p')
 keymap.set({"n", "v"}, "<leader>P", '"+P')
 
-keymap.set({'n', 'v'}, '<leader>f', '<cmd>Telescope find_files<cr>', {desc = 'Find file'})
-keymap.set({'n', 'v'}, '<leader>/', '<cmd>Telescope live_grep<cr>', {desc = 'Grep'})
-keymap.set({'n', 'v'}, '<leader>b', '<cmd>Telescope buffers<cr>', {desc = 'Find buffer'})
+keymap.set({'n', 'v'}, '<leader>f', '<cmd>FZF<cr>', {desc = 'Find file'})
 
 if vim.g.neovide then
   keymap.set({'n','v' ,'o', 'i'}, '<F11>', function ()
@@ -250,7 +250,7 @@ function async_run(buildcmd)
   local function on_stdout(err, data)
     if data then
       vim.schedule(function ()
-        local lines = vim.split(data, "\n", { trimempty = true })
+        local lines = vim.split(data, "\r?\n", { trimempty = true })
         fn.setqflist({}, "a", { lines = lines })
       end)
     end
@@ -272,17 +272,4 @@ api.nvim_create_user_command("Run", function(opts)
 end, {
   nargs = "*",
   complete = "file",
-})
-
-require('telescope').setup({
-  defaults = {
-    file_ignore_patterns = {
-      "%.git", "%.zig%-cache",
-      "%.exe", "%.dll", "%.so", "%.obj", "%.a", "%.pdb", "%.ilk",
-      "%.png", "%.jpg", "%.jpeg", "%.gif", "%.bmp", "%.ico",
-      "%.pdf", "%.zip", "%.tar", "%.gz", "%.rar",
-      "%.mp3", "%.mp4", "%.mkv", "%.avi", "%.wav",
-      "%.lock",
-    },
-  },
 })
