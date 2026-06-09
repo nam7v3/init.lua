@@ -32,6 +32,8 @@ opt.autoread = true
 opt.inccommand = "split"
 opt.timeoutlen = 3000
 opt.ruler = false
+opt.wildmenu = true
+opt.wildoptions:remove("pum")
 
 -- Completion
 opt.completeopt = "menuone,popup"
@@ -216,9 +218,9 @@ function detect_build_cmd()
   return ""
 end
 
-function async_build(buildcmd)
+function async_run(buildcmd)
   if not buildcmd then
-    print("no build command");
+    print("Run: no build command");
     return
   end
 
@@ -230,7 +232,6 @@ function async_build(buildcmd)
     end
   end
 
-  vim.print(buildstr)
   vim.cmd("silent! wall")
 
   local start_time = vim.uv.hrtime()
@@ -241,18 +242,18 @@ function async_build(buildcmd)
     vim.schedule(function ()
       g.async_make_running = false
       fn.setqflist({}, 'a', {
-        title = string.format("%s: completed in %ds", buildstr, duration)
+        title = string.format("%s: completed in %.2fs", buildstr, duration)
       })
     end)
   end
 
   local function on_stdout(err, data)
-    vim.schedule(function ()
-      if data then
-        local lines = vim.split(data, "\r\n", { trimempty = true })
+    if data then
+      vim.schedule(function ()
+        local lines = vim.split(data, "\n", { trimempty = true })
         fn.setqflist({}, "a", { lines = lines })
-      end
-    end)
+      end)
+    end
   end
   vim.g.async_make_running = true
   if vim.g.async_make_running then
@@ -262,12 +263,12 @@ function async_build(buildcmd)
   vim.cmd("copen")
 end
 
-api.nvim_create_user_command("Build", function(opts)
+api.nvim_create_user_command("Run", function(opts)
   local buildcmd = opts.fargs
   if #opts.fargs < 1 then
     buildcmd = detect_build_cmd()
   end
-  async_build(buildcmd)
+  async_run(buildcmd)
 end, {
   nargs = "*",
   complete = "file",
