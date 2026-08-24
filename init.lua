@@ -4,6 +4,17 @@ local opt = vim.opt
 local fn = vim.fn
 local g = vim.g
 
+require("vim._core.ui2").enable()
+
+vim.pack.add({
+  'https://github.com/neovim/nvim-lspconfig',
+  'https://github.com/nvim-treesitter/nvim-treesitter',
+  'https://github.com/nvim-telescope/telescope.nvim',
+  'https://github.com/nvim-lua/plenary.nvim',
+})
+
+opt.runtimepath:append(vim.fn.stdpath("config") .. "/bin")
+
 -- GUI
 vim.cmd.colorscheme("retrobox")
 
@@ -38,7 +49,7 @@ opt.visualbell = false
 opt.errorbells = false
 
 -- Completion
-opt.completeopt = "menuone,popup"
+opt.completeopt = "menuone,popup,noinsert"
 opt.pumheight = 8
 
 -- Indentation
@@ -51,10 +62,16 @@ opt.smartindent = true
 
 -- Searching
 opt.selection = "exclusive"
+opt.ignorecase = true
 opt.smartcase = true
 opt.hlsearch = true
 opt.incsearch = true
 opt.wildmenu = true
+
+-- Shell
+if vim.fn.has("win32") then
+  opt.shell = "powershell.exe"
+end
 
 -- Netrw
 g.netrw_banner = 0
@@ -76,111 +93,23 @@ api.nvim_create_autocmd({ "BufWritePre" }, {
 
 api.nvim_create_autocmd({ "FileType" },  {
   desc = "Setting some common c stuff",
-  pattern = {"c", "cpp", "h", "hpp"},
+  pattern = {"c"},
   callback = function(args)
-    vim.treesitter.start(args.buf, "c")
+    vim.treesitter.start()
+    vim.bo.omnifunc = 'v:lua.vim.treesitter.query.omnifunc'
+  end,
+})
+
+api.nvim_create_autocmd({ "FileType" },  {
+  desc = "Setting some common c stuff",
+  pattern = {"cpp", "h", "hpp"},
+  callback = function(args)
+    vim.treesitter.start()
     vim.bo.omnifunc = 'v:lua.vim.treesitter.query.omnifunc'
   end,
 })
 
 -- Utils function
-
-g.mapleader = " "
-
-keymap.set("i", "<C-c>", "<C-[>")
-keymap.set("n", "<C-c>", "<C-[><cmd>nohlsearch<CR>")
-
-keymap.set("n", "<leader>d", ":Ex<CR>",{desc = "Open netrw"})
-
--- Buffer management
-keymap.set("n", "]b", ":bnext<CR>", {desc = "Next buffer"})
-keymap.set("n", "[b", ":bprevious<CR>", {desc = "Prev buffer"})
-keymap.set("n", "[B", ":bfirst<CR>", {desc = "First buffer"})
-keymap.set("n", "]B", ":blast<CR>", {desc = "Last buffer"})
-
--- Tab navigation
-keymap.set("n", "]t", ":tabnext<CR>", {desc = "Next tab"})
-keymap.set("n", "[t", ":tabprevious<CR>", {desc = "Prev tab"})
-keymap.set("n", "[T", ":tabfirst<CR>", {desc = "First tab"})
-keymap.set("n", "]T", ":tablast<CR>", {desc = "Last tab"})
-keymap.set("n", "<leader>t", ":tabnew<CR>", {desc = "Create a new tab"})
-
--- Quickfix navigation
-keymap.set("n", "]c", ":cnext<CR>", {desc = "Next quickfix"})
-keymap.set("n", "[c", ":cprevious<CR>", {desc = "Prev quickfix"})
-keymap.set("n", "[C", ":cfirst<CR>", {desc = "First quickfix"})
-keymap.set("n", "]C", ":clast<CR>", {desc = "Last quickfix"})
-
--- Error navigation
-keymap.set("n", "[e", function() vim.diagnostic.goto_prev() end, opts)
-keymap.set("n", "]e", function() vim.diagnostic.goto_next() end, opts)
-
--- Scroll
-keymap.set('n', '<C-d>', '<C-d>zz')
-keymap.set('n', '<C-u>', '<C-u>zz')
-
--- keymap.set("t", "<C-\\>", "<C-\\><C-n>", {desc = "Escape da terminal"})
-
--- Window navigation
-keymap.set("n", "<C-J>", "<C-W>j")
-keymap.set("n", "<C-K>", "<C-W>k")
-keymap.set("n", "<C-L>", "<C-W>l")
-keymap.set("n", "<C-H>", "<C-W>h")
-keymap.set("n", "<C-Left>", ":vertical resize-3<CR>", {silent = true})
-keymap.set("n", "<C-Right>", ":vertical resize+3<CR>", {silent = true})
-keymap.set("n", "<C-Up>", ":horizontal resize-3<CR>", {silent = true})
-keymap.set("n", "<C-Down>", ":horizontal resize+3<CR>", {silent = true})
-
--- Visual mode
-keymap.set("v", "K", ":m '<-2<CR>gv=gv", {desc = "Shift region down"})
-keymap.set("v", "J", ":m '>+1<CR>gv=gv", {desc = "Shift region up"})
-keymap.set("v", ">", ">gv", {desc = "Continue to select shift region"})
-keymap.set("v", "<", "<gv", {desc = "Continue to select shift region"})
-
--- quick
-keymap.set("v", "(", "<Esc>`<i(<Esc>`>a)<Esc>`<v`>f)")
-keymap.set("v", "[", "<Esc>`<i[<Esc>`>a]<Esc>`<v`>f]")
-keymap.set("v", "{", "<Esc>`<i{<Esc>`>a}<Esc>`<v`>f}")
-keymap.set("v", ")", "<Esc>`<i(<Esc>`>a)<Esc>`<v`>f)")
-keymap.set("v", "]", "<Esc>`<i[<Esc>`>a]<Esc>`<v`>f]")
-keymap.set("v", "}", "<Esc>`<i{<Esc>`>a}<Esc>`<v`>f}")
-keymap.set("v", "g>", "<Esc>`<i<<Esc>`>a><Esc>`<v`>f>")
-keymap.set("v", "g<", "<Esc>`<i<<Esc>`>a><Esc>`<v`>f>")
-keymap.set("v", 'g"', '<Esc>`<i"<Esc>`>a"<Esc>`<v`>f"')
-keymap.set("v", "g'", "<Esc>`<i'<Esc>`>a'<Esc>`<v`>f'")
-
--- Navigation
-keymap.set({'n', 'o', 'v'}, 'L', '$')
-keymap.set({'n', 'o', 'v'}, 'H', '^')
-
-keymap.set('n', '<C-p>', function () toggle_quickfix() end, { desc = 'Toggle Quickfix' })
-keymap.set('n', '<C-b>', function () async_run(detect_build_cmd()) end, { desc = 'Building the project' })
-
-keymap.set({"n", "o", "v"}, "L", "$")
-keymap.set({"n", "o", "v"}, "H", "^")
-
--- Editting
-keymap.set("n", "J", "mzJ`z")
-keymap.set("n", "U", "<C-r>", {desc = "Redo"})
-
--- Searching
-keymap.set("n", "n", "nzz", {desc = "Center next search"})
-keymap.set("n", "N", "Nzz", {desc = "Center prev search"})
-
--- Fast clipboard
-keymap.set({"n", "v"}, "<leader>y", '"+y')
-keymap.set({"n", "v"}, "<leader>Y", '"+Y')
-keymap.set({"n", "v"}, "<leader>p", '"+p')
-keymap.set({"n", "v"}, "<leader>P", '"+P')
-
-keymap.set({'n', 'v'}, '<leader>f', '<cmd>FZF<cr>', {desc = 'Find file'})
-
-if vim.g.neovide then
-  keymap.set({'n','v' ,'o', 'i'}, '<F11>', function ()
-    vim.g.neovide_fullscreen = not vim.g.neovide_fullscreen
-  end, {})
-end
-
 -- Building
 function toggle_quickfix()
   local quickfix_open = false;
@@ -263,6 +192,106 @@ function async_run(buildcmd)
   vim.cmd("copen")
 end
 
+g.mapleader = " "
+
+keymap.set("i", "<C-c>", "<C-[>")
+keymap.set("n", "<C-c>", "<C-[><cmd>nohlsearch<CR>")
+
+keymap.set("n", "<leader>d", ":Ex<CR>",{desc = "Open netrw"})
+
+-- Buffer management
+keymap.set("n", "]b", ":bnext<CR>", {desc = "Next buffer"})
+keymap.set("n", "[b", ":bprevious<CR>", {desc = "Prev buffer"})
+keymap.set("n", "[B", ":bfirst<CR>", {desc = "First buffer"})
+keymap.set("n", "]B", ":blast<CR>", {desc = "Last buffer"})
+
+-- Tab navigation
+keymap.set("n", "]t", ":tabnext<CR>", {desc = "Next tab"})
+keymap.set("n", "[t", ":tabprevious<CR>", {desc = "Prev tab"})
+keymap.set("n", "[T", ":tabfirst<CR>", {desc = "First tab"})
+keymap.set("n", "]T", ":tablast<CR>", {desc = "Last tab"})
+keymap.set("n", "<leader>t", ":tabnew<CR>", {desc = "Create a new tab"})
+
+-- Quickfix navigation
+keymap.set("n", "]c", ":cnext<CR>", {desc = "Next quickfix"})
+keymap.set("n", "[c", ":cprevious<CR>", {desc = "Prev quickfix"})
+keymap.set("n", "[C", ":cfirst<CR>", {desc = "First quickfix"})
+keymap.set("n", "]C", ":clast<CR>", {desc = "Last quickfix"})
+
+-- Error navigation
+keymap.set("n", "[e", function() vim.diagnostic.goto_prev() end, opts)
+keymap.set("n", "]e", function() vim.diagnostic.goto_next() end, opts)
+
+-- Scroll
+keymap.set('n', '<C-d>', '<C-d>zz')
+keymap.set('n', '<C-u>', '<C-u>zz')
+
+keymap.set("t", "<C-\\>", "<C-\\><C-n>", {desc = "Escape da terminal"})
+
+-- Window navigation
+keymap.set("n", "<C-J>", "<C-W>j")
+keymap.set("n", "<C-K>", "<C-W>k")
+keymap.set("n", "<C-L>", "<C-W>l")
+keymap.set("n", "<C-H>", "<C-W>h")
+keymap.set("n", "<C-Left>", ":vertical resize-3<CR>", {silent = true})
+keymap.set("n", "<C-Right>", ":vertical resize+3<CR>", {silent = true})
+keymap.set("n", "<C-Up>", ":horizontal resize-3<CR>", {silent = true})
+keymap.set("n", "<C-Down>", ":horizontal resize+3<CR>", {silent = true})
+
+-- Visual mode
+keymap.set("v", "K", ":m '<-2<CR>gv=gv", {desc = "Shift region down"})
+keymap.set("v", "J", ":m '>+1<CR>gv=gv", {desc = "Shift region up"})
+keymap.set("v", ">", ">gv", {desc = "Continue to select shift region"})
+keymap.set("v", "<", "<gv", {desc = "Continue to select shift region"})
+
+-- quick
+keymap.set("v", "(", "<Esc>`<i(<Esc>`>a)<Esc>`<v`>f)")
+keymap.set("v", "[", "<Esc>`<i[<Esc>`>a]<Esc>`<v`>f]")
+keymap.set("v", "{", "<Esc>`<i{<Esc>`>a}<Esc>`<v`>f}")
+keymap.set("v", ")", "<Esc>`<i(<Esc>`>a)<Esc>`<v`>f)")
+keymap.set("v", "]", "<Esc>`<i[<Esc>`>a]<Esc>`<v`>f]")
+keymap.set("v", "}", "<Esc>`<i{<Esc>`>a}<Esc>`<v`>f}")
+keymap.set("v", "g>", "<Esc>`<i<<Esc>`>a><Esc>`<v`>f>")
+keymap.set("v", "g<", "<Esc>`<i<<Esc>`>a><Esc>`<v`>f>")
+keymap.set("v", 'g"', '<Esc>`<i"<Esc>`>a"<Esc>`<v`>f"')
+keymap.set("v", "g'", "<Esc>`<i'<Esc>`>a'<Esc>`<v`>f'")
+
+-- Navigation
+keymap.set({'n', 'o', 'v'}, 'L', '$')
+keymap.set({'n', 'o', 'v'}, 'H', '^')
+
+keymap.set('n', '<C-p>', function () toggle_quickfix() end, { desc = 'Toggle Quickfix' })
+keymap.set('n', '<C-b>', function () async_run(detect_build_cmd()) end, { desc = 'Building the project' })
+
+keymap.set({"n", "o", "v"}, "L", "$")
+keymap.set({"n", "o", "v"}, "H", "^")
+
+-- Editting
+keymap.set("n", "J", "mzJ`z")
+keymap.set("n", "U", "<C-r>", {desc = "Redo"})
+
+-- Searching
+keymap.set("n", "n", "nzz", {desc = "Center next search"})
+keymap.set("n", "N", "Nzz", {desc = "Center prev search"})
+
+-- Fast clipboard
+keymap.set({"n", "v"}, "<leader>y", '"+y')
+keymap.set({"n", "v"}, "<leader>Y", '"+Y')
+keymap.set({"n", "v"}, "<leader>p", '"+p')
+keymap.set({"n", "v"}, "<leader>P", '"+P')
+
+local builtin = require('telescope.builtin')
+
+vim.keymap.set('n', '<leader>f', builtin.find_files, { desc = 'Telescope find files' })
+vim.keymap.set('n', '<leader>/', builtin.live_grep, { desc = 'Telescope live grep' })
+vim.keymap.set('n', '<leader>b', builtin.buffers, { desc = 'Telescope buffers' })
+
+if vim.g.neovide then
+  keymap.set({'n','v' ,'o', 'i'}, '<F11>', function ()
+    vim.g.neovide_fullscreen = not vim.g.neovide_fullscreen
+  end, {})
+end
+
 api.nvim_create_user_command("Run", function(opts)
   local buildcmd = opts.fargs
   if #opts.fargs < 1 then
@@ -273,3 +302,45 @@ end, {
   nargs = "*",
   complete = "file",
 })
+
+api.nvim_create_autocmd('LspAttach', {
+  callback = function(args)
+    local bufnr = args.buf
+    local map = function(mode, lhs, rhs, desc)
+      vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
+    end
+
+    map('n', 'K', vim.lsp.buf.hover, 'LSP Hover')
+    map('n', 'gd', vim.lsp.buf.definition, 'Go to definition')
+    map('n', 'gD', vim.lsp.buf.declaration, 'Go to declaration')
+    map('n', 'gi', vim.lsp.buf.implementation, 'Go to implementation')
+    map('n', 'gr', vim.lsp.buf.references, 'References')
+    map('n', '<leader>rr', vim.lsp.buf.rename, 'Rename symbol')
+    map({ 'n', 'v' }, '<leader>a', vim.lsp.buf.code_action, 'Code action')
+    map('n', '<leader>q', function() vim.lsp.buf.format({ async = true }) end, 'Format buffer')
+  end,
+})
+
+vim.diagnostic.config({
+  severity_sort = true,
+  update_in_insert = false,
+  float = {
+    border = 'rounded',
+    source = 'if_many',
+  },
+  underline = true,
+  virtual_text = {
+    spacing = 2,
+    source = 'if_many',
+  },
+  signs = {
+    text = {
+      [vim.diagnostic.severity.ERROR] = 'E',
+      [vim.diagnostic.severity.WARN] = 'W',
+      [vim.diagnostic.severity.INFO] = 'I',
+      [vim.diagnostic.severity.HINT] = 'H',
+    },
+  },
+})
+
+vim.lsp.enable('clangd')
