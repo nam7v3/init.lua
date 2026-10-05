@@ -24,6 +24,9 @@ opt.number = true
 opt.showmode = true
 opt.title = false
 opt.cursorline = true
+opt.shortmess:append("F")
+opt.shortmess:append("c")
+opt.updatetime = 300
 
 g.neovide_cursor_animation_length = 0.0
 
@@ -40,7 +43,7 @@ opt.hidden = true
 opt.mouse = 'a'
 opt.clipboard:append("unnamedplus")
 opt.autoread = true
-opt.inccommand = "split"
+opt.inccommand = "nosplit"
 opt.timeoutlen = 3000
 opt.ruler = false
 opt.wildmenu = true
@@ -49,8 +52,9 @@ opt.visualbell = false
 opt.errorbells = false
 
 -- Completion
-opt.completeopt = "menuone,popup,noinsert"
+opt.completeopt = "menuone,popup,noselect,noinsert"
 opt.pumheight = 8
+opt.complete = "o"
 
 -- Indentation
 opt.tabstop = 2
@@ -76,6 +80,7 @@ end
 -- Netrw
 g.netrw_banner = 0
 g.netrw_altv = 1
+
 
 vim.cmd [[ highlight link @comment.note Todo ]]
 vim.cmd [[ highlight link @comment.todo Todo ]]
@@ -109,6 +114,24 @@ api.nvim_create_autocmd({ "FileType" },  {
   end,
 })
 
+vim.api.nvim_create_autocmd("CursorHold", {
+  callback = function()
+    vim.lsp.buf.document_highlight()
+  end,
+})
+
+vim.api.nvim_create_autocmd("CursorHoldI", {
+  callback = function()
+    vim.lsp.buf.document_highlight()
+  end,
+})
+
+vim.api.nvim_create_autocmd("CursorMoved", {
+  callback = function()
+    vim.lsp.buf.clear_references()
+  end,
+})
+
 -- Utils function
 -- Building
 function toggle_quickfix()
@@ -133,7 +156,7 @@ local buildcmd_files = {
   ["Makefile"] = {"make"},
   ["CMakeList.txt"] = {"cmake"},
   ["meson.build"] = {"meson"},
-  ["premake5.lua"] = {"premake5"},
+  ["premake5.lua"] = {"premake5", "build"},
 }
 
 function detect_build_cmd()
@@ -188,7 +211,7 @@ function async_run(buildcmd)
   if vim.g.async_make_running then
     vim.system(buildcmd, { text = true, stdout = on_stdout}, on_exit)
   end
-  fn.setqflist({}, "f", { title = string.format("%s: building", buildstr) })
+  fn.setqflist({}, " ", { title = string.format("%s: building", buildstr) })
   vim.cmd("copen")
 end
 
@@ -198,6 +221,7 @@ keymap.set("i", "<C-c>", "<C-[>")
 keymap.set("n", "<C-c>", "<C-[><cmd>nohlsearch<CR>")
 
 keymap.set("n", "<leader>d", ":Ex<CR>",{desc = "Open netrw"})
+keymap.set('i', '<CR>', function() return vim.fn.pumvisible() == 1 and '<C-y>' or '<CR>' end, { expr = true })
 
 -- Buffer management
 keymap.set("n", "]b", ":bnext<CR>", {desc = "Next buffer"})
@@ -219,8 +243,8 @@ keymap.set("n", "[C", ":cfirst<CR>", {desc = "First quickfix"})
 keymap.set("n", "]C", ":clast<CR>", {desc = "Last quickfix"})
 
 -- Error navigation
-keymap.set("n", "[e", function() vim.diagnostic.goto_prev() end, opts)
-keymap.set("n", "]e", function() vim.diagnostic.goto_next() end, opts)
+keymap.set("n", "[e", function() vim.diagnostic.jump({count = -1}) end, opts)
+keymap.set("n", "]e", function() vim.diagnostic.jump({count = 1}) end, opts)
 
 -- Scroll
 keymap.set('n', '<C-d>', '<C-d>zz')
@@ -261,7 +285,7 @@ keymap.set({'n', 'o', 'v'}, 'L', '$')
 keymap.set({'n', 'o', 'v'}, 'H', '^')
 
 keymap.set('n', '<C-p>', function () toggle_quickfix() end, { desc = 'Toggle Quickfix' })
-keymap.set('n', '<C-b>', function () async_run(detect_build_cmd()) end, { desc = 'Building the project' })
+keymap.set('n', '<C-b>', ":Build<CR>")
 
 keymap.set({"n", "o", "v"}, "L", "$")
 keymap.set({"n", "o", "v"}, "H", "^")
@@ -292,11 +316,23 @@ if vim.g.neovide then
   end, {})
 end
 
-api.nvim_create_user_command("Run", function(opts)
+api.nvim_create_user_command("R", function(opts)
   local buildcmd = opts.fargs
   if #opts.fargs < 1 then
     buildcmd = detect_build_cmd()
   end
+  async_run(buildcmd)
+end, {
+  nargs = "*",
+  complete = "file",
+})
+
+api.nvim_create_user_command("Build", function(opts)
+  local buildcmd = opts.fargs
+  if #opts.fargs < 1 then
+    buildcmd = vim.g.buildcmd and vim.g.buildcmd or detect_build_cmd()
+  end
+  vim.g.buildcmd = buildcmd
   async_run(buildcmd)
 end, {
   nargs = "*",
@@ -310,6 +346,8 @@ api.nvim_create_autocmd('LspAttach', {
       vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
     end
 
+    vim.bo[args.buf].omnifunc = "v:lua.vim.lsp.omnifunc"
+
     map('n', 'K', vim.lsp.buf.hover, 'LSP Hover')
     map('n', 'gd', vim.lsp.buf.definition, 'Go to definition')
     map('n', 'gD', vim.lsp.buf.declaration, 'Go to declaration')
@@ -318,6 +356,8 @@ api.nvim_create_autocmd('LspAttach', {
     map('n', '<leader>rr', vim.lsp.buf.rename, 'Rename symbol')
     map({ 'n', 'v' }, '<leader>a', vim.lsp.buf.code_action, 'Code action')
     map('n', '<leader>q', function() vim.lsp.buf.format({ async = true }) end, 'Format buffer')
+    map("i", "<C-h>", vim.lsp.buf.signature_help)
+    map("n", "<leader>ws", vim.lsp.buf.workspace_symbol)
   end,
 })
 
@@ -325,7 +365,6 @@ vim.diagnostic.config({
   severity_sort = true,
   update_in_insert = false,
   float = {
-    border = 'rounded',
     source = 'if_many',
   },
   underline = true,
