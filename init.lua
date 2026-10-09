@@ -11,7 +11,10 @@ vim.pack.add({
   'https://github.com/nvim-treesitter/nvim-treesitter',
   'https://github.com/nvim-telescope/telescope.nvim',
   'https://github.com/nvim-lua/plenary.nvim',
+  'https://github.com/mason-org/mason.nvim',
 })
+
+require('mason').setup()
 
 opt.runtimepath:append(vim.fn.stdpath("config") .. "/bin")
 
@@ -27,8 +30,6 @@ opt.cursorline = true
 opt.shortmess:append("F")
 opt.shortmess:append("c")
 opt.updatetime = 300
-
-g.neovide_cursor_animation_length = 0.0
 
 -- Editor
 opt.scrolloff = 10
@@ -76,6 +77,10 @@ opt.wildmenu = true
 if vim.fn.has("win32") then
   opt.shell = "powershell.exe"
 end
+
+-- Code
+vim.opt.errorformat:prepend('%f(%l): %m')
+vim.opt.errorformat:prepend('%f(%l\\,%c): %m')
 
 -- Netrw
 g.netrw_banner = 0
@@ -199,6 +204,15 @@ function async_run(buildcmd)
     end)
   end
 
+  local function on_stderr(err, data)
+    if data then
+      vim.schedule(function ()
+        local lines = vim.split(data, "\r?\n", { trimempty = true })
+        fn.setqflist({}, "a", { lines = lines })
+      end)
+    end
+  end
+
   local function on_stdout(err, data)
     if data then
       vim.schedule(function ()
@@ -209,7 +223,7 @@ function async_run(buildcmd)
   end
   vim.g.async_make_running = true
   if vim.g.async_make_running then
-    vim.system(buildcmd, { text = true, stdout = on_stdout}, on_exit)
+    vim.system(buildcmd, { text = true, stdout = on_stdout, stderr = on_stderr}, on_exit)
   end
   fn.setqflist({}, " ", { title = string.format("%s: building", buildstr) })
   vim.cmd("copen")
@@ -303,6 +317,14 @@ keymap.set({"n", "v"}, "<leader>y", '"+y')
 keymap.set({"n", "v"}, "<leader>Y", '"+Y')
 keymap.set({"n", "v"}, "<leader>p", '"+p')
 keymap.set({"n", "v"}, "<leader>P", '"+P')
+
+-- Code utils
+keymap.set("n", "<leader>s", function ()
+  local count = tonumber(vim.g.separator_count) or 80
+  vim.api.nvim_put({ string.rep("-", count), }, "l", false, true)
+  vim.cmd("normal! k")
+  vim.cmd("normal gcc")
+end, {desc = "Insert code separator"})
 
 local builtin = require('telescope.builtin')
 
